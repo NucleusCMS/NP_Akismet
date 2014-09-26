@@ -26,16 +26,7 @@ class NP_Akismet extends NucleusPlugin {
 	function getAuthor()  	  	{ return 'Niels Leenheer'; }
 	function getURL()  			{ return 'http://www.rakaz.nl'; }
 	function getVersion() 	  	{ return '0.7'; }
-	function getDescription() 	{ return 'Check for spam with Akismet.com';	}
-	
-	function supportsFeature($what) {
-		switch($what) {
-		    case 'SqlTablePrefix':
-				return 1;
-			default:
-				return 0;
-		}
-	}
+	function getDescription() 	{ return 'Check for spam with Akismet.com';}
 	
 	function getEventList() {
 		return array('SpamCheck', 'SpamMark', 'SpamPlugin');
