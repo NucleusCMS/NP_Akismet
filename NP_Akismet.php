@@ -225,5 +225,3 @@ class NP_Akismet extends NucleusPlugin {
 			return $base . $url;
 	}
 }
-
-?>
