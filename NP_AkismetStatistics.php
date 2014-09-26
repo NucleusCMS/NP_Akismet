@@ -76,7 +76,7 @@ class NP_AkismetStatistics extends NucleusPlugin {
 						status = 1
 				');
 				
-				if ($row = mysql_fetch_array($res))
+				if ($row = sql_fetch_array($res))
 					echo (int) $row['sum'];
 				else
 					echo '0';
@@ -94,7 +94,7 @@ class NP_AkismetStatistics extends NucleusPlugin {
 						day = NOW()
 				');
 				
-				if ($row = mysql_fetch_array($res))
+				if ($row = sql_fetch_array($res))
 					echo (int) $row['sum'];
 				else
 					echo '0';
@@ -111,7 +111,7 @@ class NP_AkismetStatistics extends NucleusPlugin {
 						status = 1
 				');
 				
-				if ($row = mysql_fetch_array($res))
+				if ($row = sql_fetch_array($res))
 				{
 					$spam = (int) $row['sum'];
 					
@@ -124,7 +124,7 @@ class NP_AkismetStatistics extends NucleusPlugin {
 							status = 0
 					');
 					
-					if ($row = mysql_fetch_array($res))
+					if ($row = sql_fetch_array($res))
 					{
 						$ham = (int) $row['sum'];
 						
@@ -157,7 +157,7 @@ class NP_AkismetStatistics extends NucleusPlugin {
 				status = ' . (int) $data['status'] . '
 		');
 		
-		if ($row = mysql_fetch_array($res)) 
+		if ($row = sql_fetch_array($res)) 
 		{
 			sql_query('
 				UPDATE
