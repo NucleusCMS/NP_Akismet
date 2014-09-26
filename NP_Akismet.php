@@ -59,155 +59,159 @@ class NP_Akismet extends NucleusPlugin {
 		if (isset($data['spamcheck']['result']) && $data['spamcheck']['result'] == true) 
 			return;
 		
-		if ($data['spamcheck']['type'] == 'comment' || $data['spamcheck']['type'] == 'trackback') 
-		{
-			if ($data['spamcheck']['type'] == 'comment') 
-				$comment = array (
-					'blog' => $CONF['IndexURL'],
-					'permalink' => $this->_prepareLink($CONF['IndexURL'], createItemLink($data['spamcheck']['id'])),
-					'comment_type' => $data['spamcheck']['type'],
-					'comment_author' => $data['spamcheck']['author'], 
-					'comment_author_email' => $data['spamcheck']['email'], 
-					'comment_author_url' => $data['spamcheck']['url'], 
-					'comment_content' => $data['spamcheck']['body']
-				);
-			
-			if ($data['spamcheck']['type'] == 'trackback') 
-				$comment = array (
-					'blog' => $CONF['IndexURL'],
-					'permalink' => $this->_prepareLink($CONF['IndexURL'], createItemLink($data['spamcheck']['id'])),
-					'comment_type' => $data['spamcheck']['type'],
-					'comment_author' => $data['spamcheck']['blogname'], 
-					'comment_author_url' => $data['spamcheck']['url'], 
-					'comment_content' => $data['spamcheck']['title'] . ' ' . $data['spamcheck']['excerpt']
-				);
-			
-			if (isset($data['spamcheck']['live']) && $data['spamcheck']['live'] == true)
-			{
-				$comment['user_ip'] = $_SERVER['REMOTE_ADDR'];
-				$comment['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-				$comment['referrer'] = $_SERVER['HTTP_REFERER'];
-				
-				if ($this->getOption('Privacy') == 'low')
-				{
-					$ignore = array (
-						'HTTP_COOKIE'
-					);
-					
-					foreach ($_SERVER as $key => $value)
-						if (!in_array($key, $ignore))
-							$comment[$key] = $value;
-				}
-				
-				if ($this->getOption('Privacy') == 'normal')
-				{
-					$approved = array (
-						'HTTP_HOST', 'HTTP_USER_AGENT', 'HTTP_ACCEPT',
-						'HTTP_ACCEPT_LANGUAGE', 'HTTP_ACCEPT_ENCODING',
-						'HTTP_ACCEPT_CHARSET', 'HTTP_KEEP_ALIVE', 'HTTP_REFERER',
-						'HTTP_CONNECTION', 'HTTP_FORWARDED', 'HTTP_FORWARDED_FOR',
-						'HTTP_X_FORWARDED', 'HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP',
-						'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_PORT', 'SERVER_PROTOCOL',
-						'REQUEST_METHOD'
-					);
-					
-					foreach ($_SERVER as $key => $value)
-						if (in_array($key, $approved))
-							$comment[$key] = $value;
-				}
-			}
-			
-			$query_string = '';
-			
-			foreach ($comment as $key => $part)
-				$query_string .= $key . '=' . urlencode(stripslashes($part)) . '&';
-			
-			$response = $this->_PostHTTP(
-				$query_string, 
-				$this->getOption('ApiKey') . '.rest.akismet.com', 
-				'/1.1/comment-check', 
-				80
+		if ($data['spamcheck']['type'] !== 'comment' && $data['spamcheck']['type'] !== 'trackback')
+			return;
+		
+		if ($data['spamcheck']['type'] == 'comment') 
+			$comment = array (
+				'blog' => $CONF['IndexURL'],
+				'permalink' => $this->_prepareLink($CONF['IndexURL'], createItemLink($data['spamcheck']['id'])),
+				'comment_type' => $data['spamcheck']['type'],
+				'comment_author' => $data['spamcheck']['author'], 
+				'comment_author_email' => $data['spamcheck']['email'], 
+				'comment_author_url' => $data['spamcheck']['url'], 
+				'comment_content' => $data['spamcheck']['body']
 			);
+		
+		if ($data['spamcheck']['type'] == 'trackback') 
+			$comment = array (
+				'blog' => $CONF['IndexURL'],
+				'permalink' => $this->_prepareLink($CONF['IndexURL'], createItemLink($data['spamcheck']['id'])),
+				'comment_type' => $data['spamcheck']['type'],
+				'comment_author' => $data['spamcheck']['blogname'], 
+				'comment_author_url' => $data['spamcheck']['url'], 
+				'comment_content' => $data['spamcheck']['title'] . ' ' . $data['spamcheck']['excerpt']
+			);
+		
+		if (isset($data['spamcheck']['live']) && $data['spamcheck']['live'] == true)
+		{
+			$comment['user_ip'] = $_SERVER['REMOTE_ADDR'];
+			$comment['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+			$comment['referrer'] = $_SERVER['HTTP_REFERER'];
 			
-			if (is_array($response)) {
-				$data['spamcheck']['result'] = ($response[1] == 'true');
+			if ($this->getOption('Privacy') == 'low')
+			{
+				$ignore = array (
+					'HTTP_COOKIE'
+				);
 				
-				if ($response[1] == 'true') {
-					$data['spamcheck']['plugin'] = $this->getName();
-					$data['spamcheck']['message'] = 'Marked as spam by Akismet.com';
-				}
+				foreach ($_SERVER as $key => $value)
+					if (!in_array($key, $ignore))
+						$comment[$key] = $value;
 			}
 			
-			$manager->notify('AkismetResult', array ('id' => $data['spamcheck']['id'], 'status' => (int) $data['spamcheck']['result']));
+			if ($this->getOption('Privacy') == 'normal')
+			{
+				$approved = array (
+					'HTTP_HOST', 'HTTP_USER_AGENT', 'HTTP_ACCEPT',
+					'HTTP_ACCEPT_LANGUAGE', 'HTTP_ACCEPT_ENCODING',
+					'HTTP_ACCEPT_CHARSET', 'HTTP_KEEP_ALIVE', 'HTTP_REFERER',
+					'HTTP_CONNECTION', 'HTTP_FORWARDED', 'HTTP_FORWARDED_FOR',
+					'HTTP_X_FORWARDED', 'HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP',
+					'REMOTE_ADDR', 'REMOTE_HOST', 'REMOTE_PORT', 'SERVER_PROTOCOL',
+					'REQUEST_METHOD'
+				);
+				
+				foreach ($_SERVER as $key => $value)
+					if (in_array($key, $approved))
+						$comment[$key] = $value;
+			}
 		}
+		
+		$query_string = '';
+		
+		foreach ($comment as $key => $part)
+			$query_string .= $key . '=' . urlencode(stripslashes($part)) . '&';
+		
+		$response = $this->_PostHTTP(
+			$query_string, 
+			$this->getOption('ApiKey') . '.rest.akismet.com', 
+			'/1.1/comment-check', 
+			80
+		);
+		
+		if (is_array($response)) {
+			$data['spamcheck']['result'] = ($response[1] == 'true');
+			
+			if ($response[1] == 'true') {
+				$data['spamcheck']['plugin'] = $this->getName();
+				$data['spamcheck']['message'] = 'Marked as spam by Akismet.com';
+			}
+		}
+		
+		$manager->notify('AkismetResult', array ('id' => $data['spamcheck']['id'], 'status' => (int) $data['spamcheck']['result']));
 	}
 	
 	function event_SpamMark(&$data) {
 		global $CONF;
 		
-		if ($data['spammark']['type'] == 'comment' || $data['spammark']['type'] == 'trackback') 
+		if ($data['spammark']['type'] !== 'comment' && $data['spammark']['type'] !== 'trackback')
+			return;
+		
+		if ($data['spammark']['type'] == 'comment') 
+			$comment = array (
+				'comment_post_ID' => $data['spammark']['id'], 
+				'comment_author' => $data['spammark']['author'], 
+				'comment_author_email' => $data['spammark']['email'], 
+				'comment_author_url' => $data['spammark']['url'], 
+				'comment_content' => $data['spammark']['body'],
+				'comment_type' => '',
+				'blog' => $CONF['IndexURL']
+			);
+		
+		if ($data['spammark']['type'] == 'trackback') 
+			$comment = array (
+				'comment_post_ID' => $data['spammark']['id'], 
+				'comment_author' => $data['spammark']['blogname'], 
+				'comment_author_url' => $data['spammark']['url'], 
+				'comment_content' => $data['spammark']['title'] . ' ' . $data['spammark']['excerpt'],
+				'comment_type' => '',
+				'blog' => $CONF['IndexURL']
+			);
+		
+		$query_string = '';
+		
+		foreach ($comment as $key => $part)
 		{
-			if ($data['spammark']['type'] == 'comment') 
-				$comment = array (
-					'comment_post_ID' => $data['spammark']['id'], 
-					'comment_author' => $data['spammark']['author'], 
-					'comment_author_email' => $data['spammark']['email'], 
-					'comment_author_url' => $data['spammark']['url'], 
-					'comment_content' => $data['spammark']['body'],
-					'comment_type' => '',
-					'blog' => $CONF['IndexURL']
-				);
-			
-			if ($data['spammark']['type'] == 'trackback') 
-				$comment = array (
-					'comment_post_ID' => $data['spammark']['id'], 
-					'comment_author' => $data['spammark']['blogname'], 
-					'comment_author_url' => $data['spammark']['url'], 
-					'comment_content' => $data['spammark']['title'] . ' ' . $data['spammark']['excerpt'],
-					'comment_type' => '',
-					'blog' => $CONF['IndexURL']
-				);
-			
-			$query_string = '';
-			
-			foreach ($comment as $key => $part)
-				$query_string .= $key . '=' . urlencode(stripslashes($part)) . '&';
-			
-			if ($data['spammark']['result'] == true)
-			{
-				$response = $this->_PostHTTP(
-					$query_string, 
-					$this->getOption('ApiKey') . '.rest.akismet.com', 
-					'/1.1/submit-spam', 
-					80
-				);
-			}
-			else
-			{
-				$response = $this->_PostHTTP(
-					$query_string, 
-					$this->getOption('ApiKey') . '.rest.akismet.com', 
-					'/1.1/submit-ham', 
-					80
-				);
-			}
-		}		
+			$query_string .= $key . '=' . urlencode(stripslashes($part)) . '&';
+		}
+		
+		if ($data['spammark']['result'] == true)
+		{
+			$response = $this->_PostHTTP(
+				$query_string, 
+				$this->getOption('ApiKey') . '.rest.akismet.com', 
+				'/1.1/submit-spam', 
+				80
+			);
+		}
+		else
+		{
+			$response = $this->_PostHTTP(
+				$query_string, 
+				$this->getOption('ApiKey') . '.rest.akismet.com', 
+				'/1.1/submit-ham', 
+				80
+			);
+		}
 	}
 	
 	function _PostHTTP($request, $host, $path, $port = 80) {
 		global $nucleus;
 		
-		$http_request  = "POST $path HTTP/1.0\r\n";
-		$http_request .= "Host: $host\r\n";
-		$http_request .= "Content-Type: application/x-www-form-urlencoded; charset=" . _CHARSET . "\r\n";
-		$http_request .= "Content-Length: " . strlen($request) . "\r\n";
-		$http_request .= "User-Agent: Nucleus/" . substr($nucleus['version'], 1) . " | Akismet/" . $this->getVersion() . "\r\n";
-		$http_request .= "\r\n";
-		$http_request .= $request;
+		$http_request = array();
+		$http_request[] = sprintf('POST %s HTTP/1.0'   , $path);
+		$http_request[] = sprintf('Host: %s'           , $host);
+		$http_request[] = sprintf('Content-Type: application/x-www-form-urlencoded; charset=%s', _CHARSET);
+		$http_request[] = sprintf('Content-Length: %s' , strlen($request));
+		$http_request[] = sprintf('User-Agent: Nucleus/%s | Akismet/%s'  , substr($nucleus['version'], 1), $this->getVersion());
+		$http_request[] = '';
+		$http_request[] = $request;
 		
 		$response = '';
-		if( false !== ( $fs = @fsockopen($host, $port, $errno, $errstr, 3) ) ) {
-			fwrite($fs, $http_request);
+		$fs = @fsockopen($host, $port, $errno, $errstr, 3);
+		if($fs !== false) {
+			fwrite($fs, join("\r\n",$http_request));
 			while ( !feof($fs) )
 				$response .= fgets($fs, 1160); // One TCP-IP packet
 			fclose($fs);
