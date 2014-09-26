@@ -184,5 +184,3 @@ class NP_AkismetStatistics extends NucleusPlugin {
 		}		
 	}
 }
-
-?>
