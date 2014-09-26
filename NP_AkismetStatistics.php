@@ -22,25 +22,68 @@
     */
 
 class NP_AkismetStatistics extends NucleusPlugin {
-	function getName()			{ return 'AkismetStatistics'; }
-	function getAuthor()  	  	{ return 'Niels Leenheer'; }
-	function getURL()  	  		{ return 'http://www.rakaz.nl'; }
-	function getVersion() 	  	{ return '0.2'; }
-	function getDescription() 	{ return 'Store statistics about the Akismet plugin'; }
+	function getName()			{ return 'AkismetStatistics';}
+	function getAuthor()  	  	{ return 'Niels Leenheer';}
+	function getURL()  	  		{ return 'http://www.rakaz.nl';}
+	function getVersion() 	  	{ return '0.2';}
+	function getDescription() 	{ return 'Store statistics about the Akismet plugin';}
+	function getEventList()     { return array('AkismetResult');}
 	
-	function supportsFeature($what) {
-		switch($what) {
-		    case 'SqlTablePrefix':
-				return 1;
-			default:
-				return 0;
+	function supportsFeature($what) {return in_array($what,array('SqlTablePrefix'));}
+	
+	function doSkinVar($skinType, $what = '') {
+		$tbl_plug_akismet_statistics = sql_table('plug_akismet_statistics');
+		switch ($what) {
+			case 'all':
+				$query = sprintf('SELECT SUM(count) as sum FROM %s WHERE status=1',$tbl_plug_akismet_statistics);
+				$res = sql_query($query);
+				$row = sql_fetch_array($res);
+				if ($row) echo (int) $row['sum'];
+				else      echo '0';
+				break;
+			case 'today':
+				$query = sprintf('SELECT SUM(count) as sum FROM %s WHERE status=1 AND day=NOW()',$tbl_plug_akismet_statistics);
+				$res = sql_query($query);
+				$row = sql_fetch_array($res);
+				if ($row) echo (int) $row['sum'];
+				else      echo '0';
+				break;
+			case 'percentage':
+				$query = sprintf('SELECT SUM(count) as sum FROM %s WHERE status=1',$tbl_plug_akismet_statistics);
+				$res = sql_query($query);
+				$row = sql_fetch_array($res);
+				if ($row)
+				{
+					$spam = (int) $row['sum'];
+					$query = sprintf('SELECT SUM(count) as sum FROM %s WHERE status=0',$tbl_plug_akismet_statistics);
+					$res = sql_query($query);
+					$row = sql_fetch_array($res);
+					if ($row)
+					{
+						$ham = (int) $row['sum'];
+						echo round ( ($spam / ($ham + $spam)) * 100 ) . '%';
+					}
+					else
+						echo '100%';
+				}
+				else
+					echo '0%';
+				break;
 		}
 	}
 	
-	function getEventList() {
-		return array('AkismetResult');
+	function event_AkismetResult(&$data) {
+		$vs = array(sql_table('plug_akismet_statistics'), addslashes($data['id']), (int) $data['status']);
+		$query = vsprintf('SELECT * FROM %s WHERE id=%s AND day=NOW() AND status=%s', $vs);
+		$res = sql_query($query);
+		$row = sql_fetch_array($res);
+		if ($row)
+			$query = vsprintf('UPDATE %s SET count=count+1 WHERE id=%s AND day=NOW() AND status=%s', $vs);
+		else 
+			$query = vsprintf('INSERT INTO %s SET id=%s, day=NOW(), status=%s, count=1', $vs);
+		sql_query($query);
 	}
-
+	
 	function install() {
 		$this->createOption('DropTable', 'Clear the database when uninstalling','yesno','no');
 
@@ -61,126 +104,5 @@ class NP_AkismetStatistics extends NucleusPlugin {
 		if ($this->getOption('DropTable') == 'yes') {
 			sql_query('DROP TABLE ' . sql_table('plug_akismet_statistics'));
 		}
-	}	
-
-	function doSkinVar($skinType, $what = '') {
-		
-		switch ($what) {
-			case 'all':
-				$res = sql_query('
-					SELECT 
-					 	SUM(count) as sum
-					FROM
-						' . sql_table('plug_akismet_statistics') . '
-					WHERE
-						status = 1
-				');
-				
-				if ($row = sql_fetch_array($res))
-					echo (int) $row['sum'];
-				else
-					echo '0';
-				
-				break;
-				
-			case 'today':
-				$res = sql_query('
-					SELECT 
-						SUM(count) as sum
-					FROM
-						' . sql_table('plug_akismet_statistics') . '
-					WHERE
-						status = 1 AND
-						day = NOW()
-				');
-				
-				if ($row = sql_fetch_array($res))
-					echo (int) $row['sum'];
-				else
-					echo '0';
-				
-				break;
-				
-			case 'percentage':
-				$res = sql_query('
-					SELECT 
-						SUM(count) as sum
-					FROM
-						' . sql_table('plug_akismet_statistics') . '
-					WHERE
-						status = 1
-				');
-				
-				if ($row = sql_fetch_array($res))
-				{
-					$spam = (int) $row['sum'];
-					
-					$res = sql_query('
-						SELECT 
-							SUM(count) as sum
-						FROM
-							' . sql_table('plug_akismet_statistics') . '
-						WHERE
-							status = 0
-					');
-					
-					if ($row = sql_fetch_array($res))
-					{
-						$ham = (int) $row['sum'];
-						
-						echo round ( ($spam / ($ham + $spam)) * 100 ) . '%';
-					}
-					else
-					{
-						echo '100%';
-					}
-				}
-				else
-				{
-					echo '0%';
-				}
-				
-				break;				
-		}
-	}
-	
-	function event_AkismetResult(&$data) {
-		
-		$res = sql_query('
-			SELECT 
-				* 
-			FROM 
-				' . sql_table('plug_akismet_statistics') . '
-			WHERE
-				id = ' . addslashes($data['id']) . ' AND
-				day = NOW() AND
-				status = ' . (int) $data['status'] . '
-		');
-		
-		if ($row = sql_fetch_array($res)) 
-		{
-			sql_query('
-				UPDATE
-					' . sql_table('plug_akismet_statistics') . ' 
-				SET
-					count = count + 1
-				WHERE
-					id = ' . addslashes($data['id']) . ' AND
-					day = NOW() AND
-					status = ' . (int) $data['status'] . '
-			');	
-		} 
-		else 
-		{
-			sql_query('
-				INSERT INTO 
-					' . sql_table('plug_akismet_statistics') . ' 
-				SET
-					id = ' . addslashes($data['id']) . ',
-					day = NOW(),
-					status = ' . (int) $data['status'] . ',
-					count = 1
-			');	
-		}		
 	}
 }
