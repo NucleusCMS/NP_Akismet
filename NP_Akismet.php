@@ -130,7 +130,8 @@ class NP_Akismet extends NucleusPlugin {
 			}
 		}
 		
-		$manager->notify('AkismetResult', array ('id' => $data['spamcheck']['id'], 'status' => (int) $data['spamcheck']['result']));
+		$param = array ('id' => $data['spamcheck']['id'], 'status' => (int) $data['spamcheck']['result']);
+		$manager->notify('AkismetResult', $param);
 	}
 	
 	function event_SpamMark(&$data) {
